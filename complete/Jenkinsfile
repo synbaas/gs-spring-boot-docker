@@ -1,0 +1,43 @@
+pipeline {
+  agent any
+    
+stages {
+  stage('Build') {
+      steps {
+        bat 'mvn package'
+      }
+    }
+	stage('Junit Test Case') {
+      steps {
+        bat 'mvn test'
+      }
+    }
+	stage("build & SonarQube analysis") {
+            agent any
+            steps {
+              withSonarQubeEnv('My SonarQube Server') {
+                bat 'mvn sonar:Sonar \
+                    -Dsonar.projectKey=synbaas_gs-spring-boot-docker \
+                    -Dsonar.organization=synbaas-github \
+                    -Dsonar.host.url=https://sonarcloud.io \
+                    -Dsonar.login=872fc105a966bec349a19fb4c8fd43dad318dbb6'
+              }
+            }
+          }
+	stage("Quality Gate") {
+            steps {
+              timeout(time: 1, unit: 'HOURS') {
+                waitForQualityGate abortPipeline: true
+              }
+            }
+          }
+	
+   stage('Image') {
+		steps {
+		  bat "docker build -t textrecognitionservice ."
+		  bat "docker tag textrecognitionservice textrecognitionservice:latest"
+		  }
+        }
+	
+}
+}
